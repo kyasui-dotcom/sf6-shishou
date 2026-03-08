@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>スト6師匠 - ストリートファイター6 対戦メモ＆AI分析サービス</title>
+  <meta name="description" content="スト6師匠は、ストリートファイター6プレイヤー向けの対戦メモ記録＆AI分析サービスです。なぜ負けたかを記録し、AIが弱点を分析して改善策を提案します。" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f0f1a;
+      --bg-card: #1a1a2e;
+      --text: #e0e0e0;
+      --text-muted: #8888aa;
+      --accent: #e94560;
+      --accent-hover: #ff6b81;
+      --win: #00c853;
+      --loss: #e94560;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { color: var(--accent-hover); }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+
+    /* Hero */
+    .hero {
+      text-align: center;
+      padding: 80px 20px 60px;
+      background: linear-gradient(180deg, #1a1a2e 0%, #0f0f1a 100%);
+    }
+
+    .hero-icon { font-size: 72px; margin-bottom: 16px; }
+
+    .hero h1 {
+      font-size: 40px;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    .hero-sub {
+      font-size: 18px;
+      color: var(--text-muted);
+      margin-bottom: 32px;
+    }
+
+    .hero-tagline {
+      font-size: 22px;
+      font-weight: 600;
+      margin-bottom: 32px;
+      line-height: 1.5;
+    }
+
+    .hero-tagline em {
+      color: var(--accent);
+      font-style: normal;
+    }
+
+    .btn-cta {
+      display: inline-block;
+      padding: 16px 40px;
+      background: var(--accent);
+      color: white;
+      border-radius: 12px;
+      font-size: 18px;
+      font-weight: 700;
+      transition: background 0.2s, transform 0.2s;
+    }
+
+    .btn-cta:hover {
+      background: var(--accent-hover);
+      color: white;
+      transform: translateY(-2px);
+    }
+
+    /* Problem */
+    .section {
+      padding: 60px 20px;
+    }
+
+    .section-dark {
+      background: var(--bg-card);
+    }
+
+    .section h2 {
+      font-size: 28px;
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .problem-list {
+      list-style: none;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .problem-list li {
+      padding: 12px 0;
+      padding-left: 32px;
+      position: relative;
+      font-size: 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .problem-list li::before {
+      content: "😤";
+      position: absolute;
+      left: 0;
+    }
+
+    /* Features */
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .feature-card {
+      background: var(--bg);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      padding: 28px;
+    }
+
+    .feature-icon {
+      font-size: 36px;
+      margin-bottom: 12px;
+    }
+
+    .feature-card h3 {
+      font-size: 18px;
+      margin-bottom: 8px;
+    }
+
+    .feature-card p {
+      font-size: 14px;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    .feature-card .badge-paid {
+      display: inline-block;
+      padding: 2px 8px;
+      background: var(--accent);
+      color: white;
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: 600;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+
+    /* Pricing */
+    .pricing-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+      max-width: 700px;
+      margin: 0 auto;
+    }
+
+    .pricing-card {
+      background: var(--bg-card);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      padding: 32px;
+      text-align: center;
+    }
+
+    .pricing-card.popular {
+      border-color: var(--accent);
+      position: relative;
+    }
+
+    .pricing-card.popular::after {
+      content: "おすすめ";
+      position: absolute;
+      top: -12px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--accent);
+      color: white;
+      padding: 2px 16px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .pricing-name {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .pricing-price {
+      font-size: 36px;
+      font-weight: 800;
+      margin-bottom: 4px;
+    }
+
+    .pricing-price span {
+      font-size: 16px;
+      font-weight: 400;
+      color: var(--text-muted);
+    }
+
+    .pricing-features {
+      list-style: none;
+      text-align: left;
+      margin: 20px 0;
+    }
+
+    .pricing-features li {
+      padding: 6px 0;
+      font-size: 14px;
+      position: relative;
+      padding-left: 24px;
+    }
+
+    .pricing-features li::before {
+      content: "✓";
+      position: absolute;
+      left: 0;
+      color: var(--win);
+      font-weight: 700;
+    }
+
+    .pricing-features li.disabled {
+      color: var(--text-muted);
+    }
+
+    .pricing-features li.disabled::before {
+      content: "—";
+      color: var(--text-muted);
+    }
+
+    /* How it works */
+    .steps {
+      max-width: 600px;
+      margin: 0 auto;
+      counter-reset: step;
+    }
+
+    .step {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 24px;
+      align-items: flex-start;
+    }
+
+    .step-num {
+      flex-shrink: 0;
+      width: 40px;
+      height: 40px;
+      background: var(--accent);
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 18px;
+    }
+
+    .step h3 {
+      font-size: 16px;
+      margin-bottom: 4px;
+    }
+
+    .step p {
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-muted);
+      font-size: 13px;
+      border-top: 1px solid rgba(255,255,255,0.05);
+    }
+
+    footer a {
+      color: var(--text-muted);
+      margin: 0 12px;
+    }
+
+    /* Responsive */
+    @media (max-width: 480px) {
+      .hero h1 { font-size: 28px; }
+      .hero-tagline { font-size: 18px; }
+      .section h2 { font-size: 22px; }
+      .pricing-price { font-size: 28px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="container">
+      <div class="hero-icon">🥋</div>
+      <h1>スト6師匠</h1>
+      <p class="hero-sub">ストリートファイター6 対戦メモ＆AI分析サービス</p>
+      <p class="hero-tagline">
+        「なぜ負けたか」を記録して、<br>
+        <em>AIがあなた専用の改善策</em>を提案します
+      </p>
+      <a href="/" class="btn-cta">無料で始める</a>
+    </div>
+  </section>
+
+  <!-- Problem -->
+  <section class="section">
+    <div class="container">
+      <h2>こんな悩みありませんか？</h2>
+      <ul class="problem-list">
+        <li>同じキャラに何度も負けるけど、何を直せばいいか分からない</li>
+        <li>試合後に「次はこうしよう」と思っても、すぐ忘れてしまう</li>
+        <li>Buckler's Boot Campの勝率は見れるけど、「なぜ」がわからない</li>
+        <li>うざい技への対処法を調べるのが面倒</li>
+        <li>一人で練習していても、何を優先すべきか分からない</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="section section-dark">
+    <div class="container">
+      <h2>スト6師匠の機能</h2>
+      <div class="features">
+        <div class="feature-card">
+          <div class="feature-icon">✏️</div>
+          <h3>対戦メモ記録</h3>
+          <p>キャラ・勝敗・メモ・タグをサクッと記録。連続入力モードで対戦後すぐに振り返り。スマホから片手で操作できます。</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📷</div>
+          <h3>リザルト画面読み取り <span class="badge-paid">有料</span></h3>
+          <p>対戦結果の画面を撮影するだけで、キャラクターと勝敗を自動入力。手間なくメモ記録を開始できます。</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🤖</div>
+          <h3>AI弱点分析 <span class="badge-paid">有料</span></h3>
+          <p>あなたの対戦メモをAIが分析。負けパターンの特定、改善アドバイス、練習メニューを師匠が提案します。</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🛡️</div>
+          <h3>技対策アドバイス <span class="badge-paid">有料</span></h3>
+          <p>「この技がうざい！」を入力するだけで、具体的な対策・フレーム情報・トレモ設定まで教えてくれます。</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📊</div>
+          <h3>勝率ダッシュボード</h3>
+          <p>キャラ別勝率、負けパターンの傾向、タグ集計をひと目で確認。自分の弱点が一目瞭然です。</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">👥</div>
+          <h3>コミュニティ</h3>
+          <p>他プレイヤーのキャラ対メモを閲覧。同じ組み合わせで勝っている人のメモから学べます。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How it works -->
+  <section class="section">
+    <div class="container">
+      <h2>使い方は簡単</h2>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div>
+            <h3>無料アカウント作成</h3>
+            <p>メールアドレスとメインキャラを登録するだけ。30秒で完了します。</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div>
+            <h3>対戦後にメモを記録</h3>
+            <p>相手キャラ・勝敗・気づいたことを記録。タグでカテゴリ分けも簡単です。</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div>
+            <h3>AIに分析してもらう</h3>
+            <p>蓄積されたメモをAIが分析。弱点の指摘と具体的な改善策を受け取ります。</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div>
+            <h3>実践して強くなる</h3>
+            <p>提案された練習メニューをトレモで実践。次の対戦で違いを実感できます。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing -->
+  <section class="section section-dark">
+    <div class="container">
+      <h2>料金プラン</h2>
+      <div class="pricing-cards">
+        <div class="pricing-card">
+          <div class="pricing-name">フリー</div>
+          <div class="pricing-price">¥0 <span>/月</span></div>
+          <ul class="pricing-features">
+            <li>対戦メモ記録（無制限）</li>
+            <li>勝率ダッシュボード</li>
+            <li>コミュニティ閲覧</li>
+            <li>要望・フィードバック投稿</li>
+            <li class="disabled">AI弱点分析</li>
+            <li class="disabled">技対策アドバイス</li>
+            <li class="disabled">リザルト画面読み取り</li>
+          </ul>
+          <a href="/" class="btn-cta" style="background:transparent;border:1px solid var(--accent);color:var(--accent);">無料で始める</a>
+        </div>
+        <div class="pricing-card popular">
+          <div class="pricing-name">プレミアム</div>
+          <div class="pricing-price">¥500 <span>/月</span></div>
+          <ul class="pricing-features">
+            <li>フリープランの全機能</li>
+            <li>AI弱点分析（無制限）</li>
+            <li>技対策アドバイス（無制限）</li>
+            <li>リザルト画面読み取り</li>
+            <li>今後追加のAI機能すべて</li>
+          </ul>
+          <a href="/" class="btn-cta">プレミアムで始める</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <p>スト6師匠 &copy; 2026</p>
+    <p style="margin-top:8px;">
+      <a href="/lp.html#terms">利用規約</a>
+      <a href="/lp.html#privacy">プライバシーポリシー</a>
+      <a href="/lp.html#law">特定商取引法に基づく表記</a>
+    </p>
+    <p style="margin-top:16px;font-size:11px;">
+      本サービスはストリートファイター6の非公式ファンサービスです。<br>
+      Street Fighter は株式会社カプコンの登録商標です。
+    </p>
+  </footer>
+
+</body>
+</html>

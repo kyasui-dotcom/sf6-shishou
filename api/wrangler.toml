@@ -1,0 +1,12 @@
+name = "sf6-shishou-api"
+main = "src/index.ts"
+compatibility_date = "2024-06-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "sf6-shishou-db"
+database_id = "placeholder-will-be-replaced"
+
+[vars]
+CORS_ORIGIN = "http://localhost:5173"
+# ANTHROPIC_API_KEY は wrangler secret で設定
