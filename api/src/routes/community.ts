@@ -91,6 +91,13 @@ community.get("/memos", async (c) => {
 community.post("/memos/:id/like", async (c) => {
   const userId = c.get("userId");
   const memoId = c.req.param("id");
+  const memo = await c.env.DB.prepare(
+    "SELECT id FROM memos WHERE id = ? AND is_public = 1"
+  ).bind(memoId).first();
+
+  if (!memo) {
+    return c.json({ error: "Memo not found" }, 404);
+  }
 
   const existing = await c.env.DB.prepare(
     "SELECT id FROM memo_likes WHERE user_id = ? AND memo_id = ?"
@@ -180,6 +187,14 @@ community.post("/combos/:id/rate", async (c) => {
 
   if (rating !== "works" && rating !== "doesnt_work") {
     return c.json({ error: "Invalid rating" }, 400);
+  }
+
+  const combo = await c.env.DB.prepare(
+    "SELECT id FROM combo_memos WHERE id = ? AND is_public = 1"
+  ).bind(comboId).first();
+
+  if (!combo) {
+    return c.json({ error: "Combo not found" }, 404);
   }
 
   const existing = await c.env.DB.prepare(
