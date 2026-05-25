@@ -1,14 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import * as api from "../lib/api";
-
-type User = {
-  id: string;
-  username: string;
-  email: string;
-  mainCharacter: string;
-  subCharacters: string[];
-  plan: string;
-};
+import type { User } from "../lib/types";
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
@@ -43,5 +35,16 @@ export function useAuth() {
     setUser(null);
   }, []);
 
-  return { user, loading, login: loginUser, register: registerUser, logout: logoutUser };
+  const refreshUser = useCallback(async () => {
+    if (api.isLoggedIn()) {
+      try {
+        const u = await api.getMe();
+        setUser(u);
+      } catch {
+        // ignore refresh errors
+      }
+    }
+  }, []);
+
+  return { user, loading, login: loginUser, register: registerUser, logout: logoutUser, refresh: refreshUser };
 }

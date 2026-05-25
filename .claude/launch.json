@@ -2,11 +2,35 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "name": "dev",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "--yes",
+        "concurrently",
+        "-k",
+        "-n",
+        "api,frontend",
+        "-c",
+        "yellow,cyan",
+        "npm --prefix api run dev",
+        "npm --prefix frontend run dev -- --host"
+      ],
+      "port": 5173,
+      "cwd": "."
+    },
+    {
       "name": "frontend",
       "runtimeExecutable": "npx",
       "runtimeArgs": ["vite", "--host"],
       "port": 5173,
       "cwd": "frontend"
+    },
+    {
+      "name": "api",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 8787,
+      "cwd": "api"
     }
   ]
 }

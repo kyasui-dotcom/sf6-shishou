@@ -1,5 +1,8 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { CHARACTERS } from "../lib/constants";
+import { CharacterSelect } from "../components/CharacterSelect";
+import { LanguageSwitcher } from "../components/LanguageSwitcher";
 
 type Props = {
   onLogin: (email: string, password: string) => Promise<void>;
@@ -7,6 +10,7 @@ type Props = {
 };
 
 export function LoginPage({ onLogin, onRegister }: Props) {
+  const { t } = useTranslation();
   const [isRegister, setIsRegister] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -36,15 +40,18 @@ export function LoginPage({ onLogin, onRegister }: Props) {
   return (
     <div className="login-page">
       <div className="login-card">
-        <h1>🥋 スト6師匠</h1>
-        <p className="subtitle">対戦メモ × AI分析</p>
+        <div className="login-lang-switcher">
+          <LanguageSwitcher />
+        </div>
+        <h1>🥋 {t("app.title")}</h1>
+        <p className="subtitle">{t("app.subtitle")}</p>
 
         <div className="tab-switch">
           <button className={!isRegister ? "active" : ""} onClick={() => setIsRegister(false)}>
-            ログイン
+            {t("login.login")}
           </button>
           <button className={isRegister ? "active" : ""} onClick={() => setIsRegister(true)}>
-            新規登録
+            {t("login.register")}
           </button>
         </div>
 
@@ -52,20 +59,15 @@ export function LoginPage({ onLogin, onRegister }: Props) {
           {isRegister && (
             <>
               <label>
-                ユーザー名
+                {t("login.username")}
                 <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} required />
               </label>
               <label>
-                メインキャラ
-                <select value={mainCharacter} onChange={(e) => setMainCharacter(e.target.value)}>
-                  <option value="">選択してください</option>
-                  {CHARACTERS.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
+                {t("login.mainCharacter")}
+                <CharacterSelect value={mainCharacter} onChange={setMainCharacter} showAll allLabel={t("common.selectPlaceholder")} />
               </label>
               <div className="sub-char-section">
-                <p className="sub-char-label">サブキャラ（複数選択可）</p>
+                <p className="sub-char-label">{t("login.subCharacters")}</p>
                 <div className="sub-char-buttons">
                   {CHARACTERS.filter((c) => c !== mainCharacter).map((c) => (
                     <button
@@ -86,18 +88,18 @@ export function LoginPage({ onLogin, onRegister }: Props) {
             </>
           )}
           <label>
-            メールアドレス
+            {t("login.email")}
             <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
           </label>
           <label>
-            パスワード
+            {t("login.password")}
             <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
           </label>
 
           {error && <p className="error">{error}</p>}
 
           <button type="submit" className="btn-primary" disabled={loading}>
-            {loading ? "処理中..." : isRegister ? "登録する" : "ログイン"}
+            {loading ? t("common.processing") : isRegister ? t("login.registerButton") : t("login.login")}
           </button>
         </form>
       </div>

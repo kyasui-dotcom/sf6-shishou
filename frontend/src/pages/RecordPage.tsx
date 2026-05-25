@@ -1,6 +1,8 @@
-import { useState, useRef } from "react";
-import { createMemo, parseMatchImage } from "../lib/api";
-import { CHARACTERS, TAGS } from "../lib/constants";
+import { useState, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
+import { createMemo, parseMatchImage, getCharacterNote, saveCharacterNote } from "../lib/api";
+import { CHARACTERS, TAGS, TAG_KEY_MAP } from "../lib/constants";
+import { CharacterSelect } from "../components/CharacterSelect";
 
 type Props = {
   mainCharacter: string;
@@ -9,7 +11,7 @@ type Props = {
 };
 
 export function RecordPage({ mainCharacter, subCharacters, onNavigate }: Props) {
-  // メイン・サブを先頭に表示、残りは全キャラ
+  const { t } = useTranslation();
   const myCharacters = [
     ...(mainCharacter ? [mainCharacter] : []),
     ...subCharacters.filter((c) => c !== mainCharacter),
@@ -22,12 +24,37 @@ export function RecordPage({ mainCharacter, subCharacters, onNavigate }: Props) 
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [isPublic, setIsPublic] = useState(false);
   const [continuous, setContinuous] = useState(false);
+  const [lp, setLp] = useState("");
+  const [mr, setMr] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
   const [parsing, setParsing] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Character strategy notes
+  const [existingNotes, setExistingNotes] = useState("");
+  const [strategyNote, setStrategyNote] = useState("");
+  const [notesExpanded, setNotesExpanded] = useState(false);
+  const [loadingNotes, setLoadingNotes] = useState(false);
+
+  // Fetch existing notes when matchup changes
+  useEffect(() => {
+    if (myCharacter && opponentCharacter) {
+      setLoadingNotes(true);
+      getCharacterNote(myCharacter, opponentCharacter)
+        .then((note) => {
+          setExistingNotes(note.content || "");
+          if (note.content) setNotesExpanded(true);
+        })
+        .catch(() => setExistingNotes(""))
+        .finally(() => setLoadingNotes(false));
+    } else {
+      setExistingNotes("");
+      setNotesExpanded(false);
+    }
+  }, [myCharacter, opponentCharacter]);
 
   const toggleTag = (tag: string) => {
     setSelectedTags((prev) =>
@@ -39,13 +66,11 @@ export function RecordPage({ mainCharacter, subCharacters, onNavigate }: Props) 
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Show preview
     setPreviewUrl(URL.createObjectURL(file));
     setParsing(true);
     setError("");
 
     try {
-      // Convert to base64
       const reader = new FileReader();
       const base64 = await new Promise<string>((resolve, reject) => {
         reader.onload = () => resolve(reader.result as string);
@@ -55,8 +80,6 @@ export function RecordPage({ mainCharacter, subCharacters, onNavigate }: Props) 
 
       const data = await parseMatchImage(base64);
 
-      // Determine which side is the user
-      // Default: assume player1 is the user, but check if either matches main/sub
       const allMyChars = [mainCharacter, ...subCharacters];
       let iAmPlayer1 = true;
       if (allMyChars.includes(data.player2) && !allMyChars.includes(data.player1)) {
@@ -71,10 +94,9 @@ export function RecordPage({ mainCharacter, subCharacters, onNavigate }: Props) 
       setOpponentCharacter(opponent);
       setResult(didWin ? "win" : "loss");
     } catch (err: any) {
-      setError(err.message || "画像の解析に失敗しました");
+      setError(err.message || t("record.parseError"));
     } finally {
       setParsing(false);
-      // Reset file input
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
@@ -82,7 +104,7 @@ export function RecordPage({ mainCharacter, subCharacters, onNavigate }: Props) 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!myCharacter || !opponentCharacter || !result) {
-      setError("キャラクターと勝敗を選択してください");
+      setError(t("record.charAndResultRequired"));
       return;
     }
 
@@ -96,7 +118,21 @@ export function RecordPage({ mainCharacter, subCharacters, onNavigate }: Props) 
         memo,
         tags: selectedTags,
         isPublic,
+        lp: lp ? parseInt(lp) : null,
+        mr: mr ? parseInt(mr) : null,
       });
+
+      // Save strategy note if user wrote one
+      if (strategyNote.trim()) {
+        const timestamp = new Date().toLocaleDateString("ja-JP");
+        const newEntry = `[${timestamp}] ${strategyNote.trim()}`;
+        const updated = existingNotes
+          ? existingNotes + "\n" + newEntry
+          : newEntry;
+        await saveCharacterNote(myCharacter, opponentCharacter, updated);
+        setExistingNotes(updated);
+        setStrategyNote("");
+      }
 
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
@@ -106,6 +142,9 @@ export function RecordPage({ mainCharacter, subCharacters, onNavigate }: Props) 
         setMemo("");
         setSelectedTags([]);
         setPreviewUrl(null);
+        setLp("");
+        setMr("");
+        setStrategyNote("");
       } else {
         onNavigate("dashboard");
       }
@@ -118,7 +157,7 @@ export function RecordPage({ mainCharacter, subCharacters, onNavigate }: Props) 
 
   return (
     <div className="record-page">
-      <h2>対戦メモ記録</h2>
+      <h2>{t("record.title")}</h2>
 
       <div className="photo-capture">
         <input
@@ -136,31 +175,31 @@ export function RecordPage({ mainCharacter, subCharacters, onNavigate }: Props) 
           onClick={() => fileInputRef.current?.click()}
           disabled={parsing}
         >
-          {parsing ? "解析中..." : "📷 リザルト画面から入力"}
+          {parsing ? t("record.parsing") : t("record.capture")}
         </button>
         {previewUrl && (
           <div className="preview-container">
-            <img src={previewUrl} alt="リザルト画面" className="preview-image" />
+            <img src={previewUrl} alt={t("record.resultScreenAlt")} className="preview-image" />
           </div>
         )}
       </div>
 
-      <div className="divider"><span>または手動入力</span></div>
+      <div className="divider"><span>{t("record.orManual")}</span></div>
 
       <form onSubmit={handleSubmit}>
         <div className="form-row">
           <label>
-            自分のキャラ
+            {t("record.myCharacter")}
             <select value={myCharacter} onChange={(e) => setMyCharacter(e.target.value)} required>
-              <option value="">選択</option>
+              <option value="">{t("common.select")}</option>
               {myCharacters.length > 0 && (
-                <optgroup label="マイキャラ">
+                <optgroup label={t("record.myCharGroup")}>
                   {myCharacters.map((c) => (
-                    <option key={c} value={c}>{c}{c === mainCharacter ? "（メイン）" : "（サブ）"}</option>
+                    <option key={c} value={c}>{c}{c === mainCharacter ? t("record.mainSuffix") : t("record.subSuffix")}</option>
                   ))}
                 </optgroup>
               )}
-              <optgroup label="その他">
+              <optgroup label={t("record.otherCharGroup")}>
                 {otherCharacters.map((c) => (
                   <option key={c} value={c}>{c}</option>
                 ))}
@@ -171,15 +210,50 @@ export function RecordPage({ mainCharacter, subCharacters, onNavigate }: Props) 
           <span className="vs-label">vs</span>
 
           <label>
-            相手のキャラ
-            <select value={opponentCharacter} onChange={(e) => setOpponentCharacter(e.target.value)} required>
-              <option value="">選択</option>
-              {CHARACTERS.map((c) => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
+            {t("record.opponentCharacter")}
+            <CharacterSelect value={opponentCharacter} onChange={setOpponentCharacter} showAll allLabel={t("common.select")} />
           </label>
         </div>
+
+        {/* Character strategy notes section */}
+        {myCharacter && opponentCharacter && (
+          <div className="strategy-notes-section">
+            <button
+              type="button"
+              className="strategy-toggle"
+              onClick={() => setNotesExpanded(!notesExpanded)}
+            >
+              {t("record.strategyNotes")} {existingNotes ? "(" + existingNotes.split("\n").length + ")" : ""}
+              <span className={notesExpanded ? "arrow-up" : "arrow-down"}>
+                {notesExpanded ? "\u25B2" : "\u25BC"}
+              </span>
+            </button>
+
+            {notesExpanded && (
+              <div className="strategy-notes-content">
+                {loadingNotes ? (
+                  <p className="loading-sm">{t("common.loading")}</p>
+                ) : existingNotes ? (
+                  <div className="existing-notes">
+                    {existingNotes.split("\n").map((line, i) => (
+                      <p key={i} className="note-line">{line}</p>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="empty-notes">{t("record.noStrategyYet")}</p>
+                )}
+
+                <textarea
+                  value={strategyNote}
+                  onChange={(e) => setStrategyNote(e.target.value)}
+                  placeholder={t("record.strategyPlaceholder")}
+                  rows={2}
+                  className="strategy-input"
+                />
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="result-buttons">
           <button
@@ -187,29 +261,40 @@ export function RecordPage({ mainCharacter, subCharacters, onNavigate }: Props) 
             className={`result-btn win ${result === "win" ? "selected" : ""}`}
             onClick={() => setResult("win")}
           >
-            WIN
+            {t("common.win")}
           </button>
           <button
             type="button"
             className={`result-btn loss ${result === "loss" ? "selected" : ""}`}
             onClick={() => setResult("loss")}
           >
-            LOSE
+            {t("common.lose")}
           </button>
         </div>
 
+        <div className="form-row">
+          <label>
+            {t("record.lp")}
+            <input type="number" value={lp} onChange={(e) => setLp(e.target.value)} placeholder="LP" />
+          </label>
+          <label>
+            {t("record.mr")}
+            <input type="number" value={mr} onChange={(e) => setMr(e.target.value)} placeholder="MR" />
+          </label>
+        </div>
+
         <label>
-          メモ（なぜ勝った/負けた？）
+          {t("record.memo")}
           <textarea
             value={memo}
             onChange={(e) => setMemo(e.target.value)}
-            placeholder="例：起き攻めで毎回投げを食らった。対空が全く出せなかった。"
+            placeholder={t("record.memoPlaceholder")}
             rows={3}
           />
         </label>
 
         <div className="tags-section">
-          <p>タグ（該当するものを選択）</p>
+          <p>{t("record.tags")}</p>
           <div className="tag-buttons">
             {TAGS.map((tag) => (
               <button
@@ -218,7 +303,7 @@ export function RecordPage({ mainCharacter, subCharacters, onNavigate }: Props) 
                 className={`tag-btn ${selectedTags.includes(tag) ? "selected" : ""}`}
                 onClick={() => toggleTag(tag)}
               >
-                {tag}
+                {TAG_KEY_MAP[tag] ? t(TAG_KEY_MAP[tag]) : tag}
               </button>
             ))}
           </div>
@@ -227,19 +312,19 @@ export function RecordPage({ mainCharacter, subCharacters, onNavigate }: Props) 
         <div className="options-row">
           <label className="checkbox-label">
             <input type="checkbox" checked={isPublic} onChange={(e) => setIsPublic(e.target.checked)} />
-            コミュニティに公開
+            {t("record.publishToCommunity")}
           </label>
           <label className="checkbox-label">
             <input type="checkbox" checked={continuous} onChange={(e) => setContinuous(e.target.checked)} />
-            連続入力モード
+            {t("record.continuousMode")}
           </label>
         </div>
 
         {error && <p className="error">{error}</p>}
-        {saved && <p className="success">保存しました！</p>}
+        {saved && <p className="success">{t("record.saved")}</p>}
 
         <button type="submit" className="btn-primary" disabled={saving}>
-          {saving ? "保存中..." : "記録する"}
+          {saving ? t("common.saving") : t("record.submitButton")}
         </button>
       </form>
     </div>

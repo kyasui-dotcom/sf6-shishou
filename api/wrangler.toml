@@ -5,8 +5,9 @@ compatibility_date = "2024-06-01"
 [[d1_databases]]
 binding = "DB"
 database_name = "sf6-shishou-db"
-database_id = "placeholder-will-be-replaced"
+database_id = "7bbb119f-bb32-4add-9a43-2d6b4e5029ef"
 
 [vars]
-CORS_ORIGIN = "http://localhost:5173"
-# ANTHROPIC_API_KEY は wrangler secret で設定
+CORS_ORIGIN = "https://sf6-shishou.pages.dev"
+STRIPE_PRICE_ID = "price_1TATAGJJG48AqjQ5A8O8mVEL"
+# ANTHROPIC_API_KEY, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, DEEPL_API_KEY は wrangler secret で設定

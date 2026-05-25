@@ -1,0 +1,13 @@
+<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0f0f1a"/>
+      <stop offset="100%" style="stop-color:#1a1a2e"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <text x="600" y="250" text-anchor="middle" font-family="sans-serif" font-size="80" fill="#ffffff" font-weight="bold">🥋 スト6師匠</text>
+  <text x="600" y="350" text-anchor="middle" font-family="sans-serif" font-size="36" fill="#e74c6f">ストリートファイター6</text>
+  <text x="600" y="420" text-anchor="middle" font-family="sans-serif" font-size="32" fill="#aaaacc">対戦メモ＆AI分析サービス</text>
+  <text x="600" y="500" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#666688">コンボメモ ・ キャラ対策ノート ・ コミュニティ</text>
+</svg>

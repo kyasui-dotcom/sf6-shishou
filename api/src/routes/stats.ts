@@ -64,4 +64,35 @@ stats.get("/", async (c) => {
   });
 });
 
+stats.get("/lp-history", async (c) => {
+  const userId = c.get("userId");
+  const myChar = c.req.query("myCharacter");
+  const period = c.req.query("period") || "all";
+
+  let query = `SELECT created_at, lp, mr, my_character, result
+               FROM memos WHERE user_id = ? AND (lp IS NOT NULL OR mr IS NOT NULL)`;
+  const params: any[] = [userId];
+
+  if (myChar) {
+    query += " AND my_character = ?";
+    params.push(myChar);
+  }
+
+  if (period !== "all") {
+    const days = { "7d": 7, "30d": 30, "90d": 90 }[period] || 30;
+    query += ` AND created_at >= datetime('now', '-${days} days')`;
+  }
+
+  query += " ORDER BY created_at ASC LIMIT 500";
+
+  const { results } = await c.env.DB.prepare(query).bind(...params).all();
+  return c.json(results?.map((r: any) => ({
+    createdAt: r.created_at,
+    lp: r.lp,
+    mr: r.mr,
+    myCharacter: r.my_character,
+    result: r.result,
+  })) || []);
+});
+
 export default stats;

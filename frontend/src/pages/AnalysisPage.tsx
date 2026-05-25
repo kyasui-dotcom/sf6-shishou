@@ -1,6 +1,8 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { analyzeMatches, getCounterAdvice } from "../lib/api";
-import { CHARACTERS } from "../lib/constants";
+import { CharacterSelect } from "../components/CharacterSelect";
+import { UpgradeModal } from "../components/UpgradeModal";
 import ReactMarkdown from "react-markdown";
 
 type Props = {
@@ -11,9 +13,9 @@ type Props = {
 type Tab = "analysis" | "counter";
 
 export function AnalysisPage({ mainCharacter, plan }: Props) {
+  const { t } = useTranslation();
   const [tab, setTab] = useState<Tab>("analysis");
 
-  // Analysis state
   const [myCharacter, setMyCharacter] = useState(mainCharacter || "");
   const [opponentCharacter, setOpponentCharacter] = useState("");
   const [analysis, setAnalysis] = useState("");
@@ -21,15 +23,16 @@ export function AnalysisPage({ mainCharacter, plan }: Props) {
   const [analysisError, setAnalysisError] = useState("");
   const [info, setInfo] = useState<{ memoCount: number; communityMemoCount: number } | null>(null);
 
-  // Counter state
   const [counterMyChar, setCounterMyChar] = useState(mainCharacter || "");
   const [counterOpponent, setCounterOpponent] = useState("");
   const [annoyingMove, setAnnoyingMove] = useState("");
   const [counterAdvice, setCounterAdvice] = useState("");
   const [counterLoading, setCounterLoading] = useState(false);
   const [counterError, setCounterError] = useState("");
+  const [showUpgrade, setShowUpgrade] = useState(false);
 
   const handleAnalyze = async () => {
+    if (plan === "free") { setShowUpgrade(true); return; }
     setAnalysisLoading(true);
     setAnalysisError("");
     setAnalysis("");
@@ -48,8 +51,9 @@ export function AnalysisPage({ mainCharacter, plan }: Props) {
   };
 
   const handleCounter = async () => {
+    if (plan === "free") { setShowUpgrade(true); return; }
     if (!counterOpponent || !annoyingMove.trim()) {
-      setCounterError("相手キャラとやられた技を入力してください");
+      setCounterError(t("analysis.counterRequired"));
       return;
     }
     setCounterLoading(true);
@@ -67,52 +71,36 @@ export function AnalysisPage({ mainCharacter, plan }: Props) {
 
   return (
     <div className="analysis-page">
-      <h2>AI師匠</h2>
+      <h2>{t("analysis.title")}</h2>
 
       <div className="tab-switch" style={{ marginBottom: 16 }}>
         <button className={tab === "analysis" ? "active" : ""} onClick={() => setTab("analysis")}>
-          メモ分析
+          {t("analysis.tabAnalysis")}
         </button>
         <button className={tab === "counter" ? "active" : ""} onClick={() => setTab("counter")}>
-          技対策
+          {t("analysis.tabCounter")}
         </button>
       </div>
 
-      {plan === "free" && (
-        <div className="paywall-banner">
-          <p>AI機能は有料プラン限定です</p>
-          <p className="paywall-price">月額 ¥500 で全AI機能が使い放題</p>
-          <button className="btn-upgrade">プランをアップグレード</button>
-        </div>
-      )}
+      <UpgradeModal isOpen={showUpgrade} onClose={() => setShowUpgrade(false)} />
 
       {tab === "analysis" && (
         <>
-          <p className="description">対戦メモをAIが分析して、弱点と改善策を提案します。</p>
+          <p className="description">{t("analysis.analysisDescription")}</p>
 
           <div className="analysis-filters">
             <label>
-              自分のキャラ（任意）
-              <select value={myCharacter} onChange={(e) => setMyCharacter(e.target.value)}>
-                <option value="">全キャラ</option>
-                {CHARACTERS.map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
+              {t("analysis.myCharOptional")}
+              <CharacterSelect value={myCharacter} onChange={setMyCharacter} showAll allLabel={t("common.allCharacters")} />
             </label>
             <label>
-              相手キャラ（任意）
-              <select value={opponentCharacter} onChange={(e) => setOpponentCharacter(e.target.value)}>
-                <option value="">全キャラ</option>
-                {CHARACTERS.map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
+              {t("analysis.opponentCharOptional")}
+              <CharacterSelect value={opponentCharacter} onChange={setOpponentCharacter} showAll allLabel={t("common.allCharacters")} />
             </label>
           </div>
 
-          <button className="btn-primary" onClick={handleAnalyze} disabled={analysisLoading || plan === "free"}>
-            {analysisLoading ? "分析中...（30秒ほどかかります）" : "師匠に分析してもらう"}
+          <button className="btn-primary" onClick={handleAnalyze} disabled={analysisLoading}>
+            {analysisLoading ? t("analysis.analyzing") : t("analysis.analyzeButton")}
           </button>
 
           {analysisError && <p className="error">{analysisError}</p>}
@@ -121,9 +109,12 @@ export function AnalysisPage({ mainCharacter, plan }: Props) {
             <div className="analysis-result">
               {info && (
                 <p className="analysis-info">
-                  あなたのメモ {info.memoCount}件
-                  {info.communityMemoCount > 0 && ` + コミュニティメモ ${info.communityMemoCount}件`}
-                  を分析しました。
+                  {t("analysis.analysisInfo", {
+                    memoCount: info.memoCount,
+                    communityPart: info.communityMemoCount > 0
+                      ? t("analysis.communityMemoPart", { count: info.communityMemoCount })
+                      : "",
+                  })}
                 </p>
               )}
               <div className="analysis-content">
@@ -136,41 +127,31 @@ export function AnalysisPage({ mainCharacter, plan }: Props) {
 
       {tab === "counter" && (
         <>
-          <p className="description">うざい技・行動を入力すると、師匠が対策を教えてくれます。</p>
+          <p className="description">{t("analysis.counterDescription")}</p>
 
           <div className="analysis-filters">
             <label>
-              自分のキャラ（任意）
-              <select value={counterMyChar} onChange={(e) => setCounterMyChar(e.target.value)}>
-                <option value="">未指定</option>
-                {CHARACTERS.map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
+              {t("analysis.counterMyChar")}
+              <CharacterSelect value={counterMyChar} onChange={setCounterMyChar} showAll allLabel={t("analysis.unspecified")} />
             </label>
             <label>
-              相手キャラ
-              <select value={counterOpponent} onChange={(e) => setCounterOpponent(e.target.value)}>
-                <option value="">選択</option>
-                {CHARACTERS.map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
+              {t("analysis.counterOpponent")}
+              <CharacterSelect value={counterOpponent} onChange={setCounterOpponent} showAll allLabel={t("common.select")} />
             </label>
           </div>
 
           <label>
-            やられた技・行動
+            {t("analysis.annoyingMove")}
             <textarea
               value={annoyingMove}
               onChange={(e) => setAnnoyingMove(e.target.value)}
-              placeholder="例：ドライブラッシュからの投げが見えない、起き上がりにSA3重ねられる、中足ドライブラッシュが止められない"
+              placeholder={t("analysis.annoyingMovePlaceholder")}
               rows={3}
             />
           </label>
 
-          <button className="btn-primary" onClick={handleCounter} disabled={counterLoading || plan === "free"} style={{ marginTop: 8 }}>
-            {counterLoading ? "対策を考え中..." : "師匠に対策を聞く"}
+          <button className="btn-primary" onClick={handleCounter} disabled={counterLoading} style={{ marginTop: 8 }}>
+            {counterLoading ? t("analysis.counterLoading") : t("analysis.counterButton")}
           </button>
 
           {counterError && <p className="error">{counterError}</p>}

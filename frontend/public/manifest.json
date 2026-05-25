@@ -2,11 +2,15 @@
   "name": "スト6師匠 - 対戦メモ＆AI分析",
   "short_name": "スト6師匠",
   "description": "ストリートファイター6の対戦メモ記録＆AI分析サービス",
+  "id": "/",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#0f0f1a",
   "theme_color": "#0f0f1a",
   "orientation": "portrait",
+  "categories": ["games", "utilities"],
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "/icon-192.png",

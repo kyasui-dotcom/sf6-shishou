@@ -1,15 +1,14 @@
 import { Hono } from "hono";
 import { Env, authMiddleware } from "../middleware/auth";
+import { callClaude } from "../lib/claude";
 
 const counter = new Hono<Env>();
 
 counter.use("/*", authMiddleware);
 
-// Get counter-strategy advice for an annoying move
 counter.post("/", async (c) => {
   const userId = c.get("userId");
 
-  // Check plan
   const user = await c.env.DB.prepare("SELECT plan FROM users WHERE id = ?").bind(userId).first();
   if (!user || user.plan === "free") {
     return c.json({ error: "技対策はAI有料プラン限定機能です。プランをアップグレードしてください。" }, 403);
@@ -43,29 +42,16 @@ counter.post("/", async (c) => {
 ### ⚡ とっさの対処法
 試合中にすぐ使える簡易的な対処法。`;
 
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": c.env.ANTHROPIC_API_KEY,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 1500,
+  try {
+    const advice = await callClaude({
+      apiKey: c.env.ANTHROPIC_API_KEY,
       messages: [{ role: "user", content: prompt }],
-    }),
-  });
+    });
 
-  if (!response.ok) {
-    console.error("Claude API error:", await response.text());
+    return c.json({ advice: advice || "対策を生成できませんでした。" });
+  } catch {
     return c.json({ error: "AI対策アドバイスの生成に失敗しました。" }, 500);
   }
-
-  const aiResponse: any = await response.json();
-  const advice = aiResponse.content?.[0]?.text || "対策を生成できませんでした。";
-
-  return c.json({ advice });
 });
 
 export default counter;

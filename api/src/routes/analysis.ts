@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { Env, authMiddleware } from "../middleware/auth";
+import { callClaude } from "../lib/claude";
 
 const analysis = new Hono<Env>();
 
@@ -8,7 +9,6 @@ analysis.use("/*", authMiddleware);
 analysis.post("/", async (c) => {
   const userId = c.get("userId");
 
-  // Check plan
   const user = await c.env.DB.prepare("SELECT plan FROM users WHERE id = ?").bind(userId).first();
   if (!user || user.plan === "free") {
     return c.json({ error: "AI分析は有料プラン限定機能です。プランをアップグレードしてください。" }, 403);
@@ -16,9 +16,8 @@ analysis.post("/", async (c) => {
 
   const { myCharacter, opponentCharacter } = await c.req.json();
 
-  // Get user's memos
   let memoQuery = "SELECT * FROM memos WHERE user_id = ?";
-  const memoParams: any[] = [userId];
+  const memoParams: (string | number)[] = [userId];
 
   if (opponentCharacter) {
     memoQuery += " AND opponent_character = ?";
@@ -37,8 +36,7 @@ analysis.post("/", async (c) => {
     return c.json({ error: "分析するメモがありません。まず対戦メモを記録してください。" }, 400);
   }
 
-  // Get community memos for the same matchup
-  let communityMemos: any[] = [];
+  let communityMemos: Record<string, unknown>[] = [];
   if (myCharacter && opponentCharacter) {
     const { results } = await c.env.DB.prepare(
       `SELECT my_character, opponent_character, result, memo, tags FROM memos
@@ -48,17 +46,16 @@ analysis.post("/", async (c) => {
     communityMemos = results || [];
   }
 
-  // Format memos for AI
-  const userMemoText = (userMemos as any[]).map((m, i) => {
-    const tags = JSON.parse(m.tags || "[]");
-    return `${i + 1}. [${m.result === "win" ? "勝ち" : "負け"}] ${m.my_character} vs ${m.opponent_character} | メモ: ${m.memo || "なし"} | タグ: ${tags.join(", ") || "なし"}`;
-  }).join("\n");
+  const formatMemo = (m: Record<string, unknown>, i: number, includeChars: boolean) => {
+    const tags: string[] = JSON.parse((m.tags as string) || "[]");
+    const resultLabel = m.result === "win" ? "勝ち" : "負け";
+    const chars = includeChars ? ` ${m.my_character} vs ${m.opponent_character} |` : "";
+    return `${i + 1}. [${resultLabel}]${chars} メモ: ${m.memo || "なし"} | タグ: ${tags.join(", ") || "なし"}`;
+  };
 
+  const userMemoText = userMemos.map((m, i) => formatMemo(m, i, true)).join("\n");
   const communityMemoText = communityMemos.length > 0
-    ? communityMemos.map((m: any, i) => {
-        const tags = JSON.parse(m.tags || "[]");
-        return `${i + 1}. [${m.result === "win" ? "勝ち" : "負け"}] メモ: ${m.memo || "なし"} | タグ: ${tags.join(", ") || "なし"}`;
-      }).join("\n")
+    ? communityMemos.map((m, i) => formatMemo(m, i, false)).join("\n")
     : "コミュニティデータはまだありません。";
 
   const prompt = `あなたはストリートファイター6の上級プレイヤーであり、コーチです。
@@ -87,35 +84,21 @@ ${communityMemoText}
 ### 📈 成長ポイント
 良い傾向や伸びている点があれば指摘してください。`;
 
-  // Call Claude API
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": c.env.ANTHROPIC_API_KEY,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 2000,
+  try {
+    const analysisText = await callClaude({
+      apiKey: c.env.ANTHROPIC_API_KEY,
+      maxTokens: 2000,
       messages: [{ role: "user", content: prompt }],
-    }),
-  });
+    });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error("Claude API error:", errorText);
+    return c.json({
+      analysis: analysisText || "分析結果を取得できませんでした。",
+      memoCount: userMemos.length,
+      communityMemoCount: communityMemos.length,
+    });
+  } catch {
     return c.json({ error: "AI分析に失敗しました。しばらく待ってから再度お試しください。" }, 500);
   }
-
-  const aiResponse: any = await response.json();
-  const analysisText = aiResponse.content?.[0]?.text || "分析結果を取得できませんでした。";
-
-  return c.json({
-    analysis: analysisText,
-    memoCount: userMemos.length,
-    communityMemoCount: communityMemos.length,
-  });
 });
 
 export default analysis;
